@@ -3,7 +3,7 @@ import numpy as np;
 import time
 import PoseModule as pm
 
-cap = cv2.VideoCapture('curls.mp4')
+cap = cv2.VideoCapture('./data/test2.mp4')
 detector = pm.poseDetector()
 count = 0
 dir = 0
@@ -12,7 +12,7 @@ pTime = 0
 while True:
     success, img = cap.read()
     img = cv2.resize(img, (1280, 720))
-    # img = cv2.imread("test.jpg")
+    # img = cv2.imread('./data/test1.jpg')
     img = detector.findPose(img, False)
     lmList = detector.findPosition(img, False)
     # print(lmList)
@@ -27,6 +27,13 @@ while True:
         lift_arm_bar = np.interp(lift_arm_angle, (30, 160), (350, 500))
 
         # print(angle, per)
+
+        right_leg_angle = detector.findAngle(img, 23, 25, 27)
+        left_leg_angle = detector.findAngle(img, 24, 26, 28)
+        detector.findAngle(img, 24, 12, 14)
+        detector.findAngle(img, 23, 11, 13)
+        detector.findAngle(img, 12, 24, 26)
+        detector.findAngle(img, 11, 23, 25)
 
         # Check for the dumbbell curls
         color = (255, 0, 255)
