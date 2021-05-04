@@ -2,6 +2,8 @@ import cv2
 import mediapipe as mp
 import time
 import math
+import csv
+import pandas as pd
 
 class poseDetector():
     def __init__(self, mode = False, upBody = False, smooth = True,
@@ -39,7 +41,7 @@ class poseDetector():
 
         return self.lmList
 
-    def findAngle(self, img, p1, p2, p3, draw=True):
+    def findAngle(self, img, p1, p2, p3, model, write = False, draw=True):
 
         # Get the landmarks
         x1, y1 = self.lmList[p1][1:]
@@ -55,6 +57,11 @@ class poseDetector():
             angle = 360 - angle
 
         # print(angle)
+        # write
+        if write:
+            list_pose = [[p1, p2, p3, angle]]
+            model = model.append(list_pose,ignore_index=True)
+
 
         # Draw
         if draw:
@@ -70,7 +77,7 @@ class poseDetector():
                         cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 2)
             # cv2.putText(img, str((int(x2), int(y2))), (x2 - 50, y2 + 50),
             #             cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 2)
-        return angle
+        return model, angle
 
 
 def main():
