@@ -41,7 +41,7 @@ class poseDetector():
 
         return self.lmList
 
-    def findAngle(self, img, p1, p2, p3, model, write = False, draw=True):
+    def findAngle(self, img, p1, p2, p3, model = None, write = False, draw=True):
 
         # Get the landmarks
         x1, y1 = self.lmList[p1][1:]
@@ -75,8 +75,8 @@ class poseDetector():
             cv2.circle(img, (x3, y3), 15, (0, 0, 255), 2)
             cv2.putText(img, str(int(angle)), (x2 - 50, y2 + 50),
                         cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 2)
-            # cv2.putText(img, str((int(x2), int(y2))), (x2 - 50, y2 + 50),
-            #             cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 2)
+            cv2.putText(img, str((int(x2), int(y2))), (x2 + 50, y2 + 50),
+                        cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 2)
         return model, angle
 
 

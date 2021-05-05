@@ -3,7 +3,7 @@ import numpy as np;
 import time
 import PoseModule as pm
 
-cap = cv2.VideoCapture('./data/test2.mp4')
+cap = cv2.VideoCapture('./data/curls.mp4')
 detector = pm.poseDetector()
 count = 0
 dir = 0
@@ -18,22 +18,22 @@ while True:
     # print(lmList)
     if len(lmList) != 0:
         # Right Arm
-        right_arm_angle = detector.findAngle(img, 12, 14, 16)
+        model, right_arm_angle = detector.findAngle(img, 12, 14, 16)
         right_arm_per = np.interp(right_arm_angle, (50, 170), (100, 0))
         right_arm_bar = np.interp(right_arm_angle, (50, 170), (100, 250))
         # # Left Arm
-        lift_arm_angle = detector.findAngle(img, 11, 13, 15)
+        model, lift_arm_angle = detector.findAngle(img, 11, 13, 15)
         lift_arm_per = np.interp(lift_arm_angle, (30, 160), (100, 0))
         lift_arm_bar = np.interp(lift_arm_angle, (30, 160), (350, 500))
 
         # print(angle, per)
 
-        right_leg_angle = detector.findAngle(img, 23, 25, 27)
-        left_leg_angle = detector.findAngle(img, 24, 26, 28)
-        detector.findAngle(img, 24, 12, 14)
-        detector.findAngle(img, 23, 11, 13)
-        detector.findAngle(img, 12, 24, 26)
-        detector.findAngle(img, 11, 23, 25)
+        # right_leg_angle = detector.findAngle(img, 23, 25, 27)
+        # left_leg_angle = detector.findAngle(img, 24, 26, 28)
+        # detector.findAngle(img, 24, 12, 14)
+        # detector.findAngle(img, 23, 11, 13)
+        # detector.findAngle(img, 12, 24, 26)
+        # detector.findAngle(img, 11, 23, 25)
 
         # Check for the dumbbell curls
         color = (255, 0, 255)
