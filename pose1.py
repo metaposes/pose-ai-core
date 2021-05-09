@@ -3,8 +3,9 @@ import numpy as np
 import time
 import PoseModule as pm
 import pandas as pd
+import rightarm_body as rb
 
-cap = cv2.VideoCapture('./data/test1.mp4')
+cap = cv2.VideoCapture('./data/test2.jpg')
 detector = pm.poseDetector()
 count = 0
 dir = 0
@@ -14,30 +15,36 @@ period_time = 0
 
 while True:
     success, img = cap.read()
-    img = cv2.resize(img, (1280, 720))
-    # img = cv2.imread('./data/test1.jpg')
+    img = cv2.resize(img, (360, 360))
+    img = cv2.imread('./data/test_user.jpg')
+    img = cv2.resize(img, (360, 720))
     img = detector.findPose(img, False)
     lmList = detector.findPosition(img, False)
     # print(lmList)
     if len(lmList) != 0:
         # Right Arm
         model = pd.DataFrame()
-        model, right_arm_angle = detector.findAngle(img, 12, 14, 16, model)
+        model, right_arm_angle, _, _ = detector.findAngle(img, 12, 14, 16, model)
         right_arm_per = np.interp(right_arm_angle, (50, 170), (100, 0))
         right_arm_bar = np.interp(right_arm_angle, (50, 170), (100, 250))
         # # Left Arm
-        model, lift_arm_angle = detector.findAngle(img, 11, 13, 15, model)
+        model, lift_arm_angle, _, _ = detector.findAngle(img, 11, 13, 15, model)
         lift_arm_per = np.interp(lift_arm_angle, (30, 160), (100, 0))
         lift_arm_bar = np.interp(lift_arm_angle, (30, 160), (350, 500))
 
         # print(angle, per)
 
-        model, right_leg_angle = detector.findAngle(img, 23, 25, 27, model)
-        model, left_leg_angle = detector.findAngle(img, 24, 26, 28, model)
-        model, _= detector.findAngle(img, 24, 12, 14, model)
-        model, _= detector.findAngle(img, 23, 11, 13, model)
-        model, _= detector.findAngle(img, 12, 24, 26, model)
-        model, _= detector.findAngle(img, 11, 23, 25, model)
+        model, right_leg_angle, _, _ = detector.findAngle(img, 23, 25, 27, model)
+        model, left_leg_angle, _, _ = detector.findAngle(img, 24, 26, 28, model)
+
+
+        model, right_arm, right_body, right_arm_body_angle= detector.findAngle(img, 14, 12, 24, model)
+        rb.right_arm_body_correct(right_arm, right_body, right_arm_body_angle, 166, 92, 74, 30).correct()
+
+
+        model, _, _, _= detector.findAngle(img, 23, 11, 13, model)
+        model, _, _, _= detector.findAngle(img, 12, 24, 26, model)
+        model, _, _, _= detector.findAngle(img, 11, 23, 25, model)
 
         # model.to_csv('./model.csv')
         # Check for the dumbbell curls
@@ -89,6 +96,6 @@ while True:
     #             (255, 0, 0), 5)
 
     cv2.imshow("Image", img)
-    cv2.waitKey(1)
+    cv2.waitKey(0)
 cap.release()
 cv2.destroyAllWindows()
