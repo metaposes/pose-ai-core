@@ -31,16 +31,16 @@ def correct():
 
     if not angle_correct:
         return "you are correct, please do the next"
-    elif angle_correct > 0:
-        if position_correct == 1:
-            return "please lift right arm " + str(angle_correct)
-        elif position_correct == 2:
-            return "body up" + str(angle_correct)
     else:
         if position_correct == 1:
-            return "please down right arm " + str(abs(angle_correct))
+            return dict(wrong_part = 'right arm', deviation = str(angle_correct))
         elif position_correct == 2:
-            return "body down " + str(abs(angle_correct))
+            return dict(wrong_part = 'body', deviation = str(angle_correct))
+    # else:
+    #     if position_correct == 1:
+    #         return "please down right arm " + str(abs(angle_correct))
+    #     elif position_correct == 2:
+    #         return "body down " + str(abs(angle_correct))
 
 @app.route('/name',methods=['GET', 'POST'])
 def get_name():
