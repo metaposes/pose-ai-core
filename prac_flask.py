@@ -5,10 +5,16 @@ import requests
 model = mm.meta_model_calc()
 app = Flask(__name__)
 
-@app.route('/rightarmbody/<int:arm_angle>/<int:body_angle>/<int:arm_body_angle>/<int:correct_arm_angle>/<int:correct_body_angle>/<int:correct_arm_body_angle>/<int:threshold>')
-def correct(arm_angle, body_angle, arm_body_angle,
-            correct_arm_angle, correct_body_angle, correct_arm_body_angle,
-            threshold):
+@app.route('/rightarmbody')
+def correct():
+    arm_angle = request.args.get('arm_angle', '')
+    body_angle = request.args.get('body_angle', '')
+    arm_body_angle = request.args.get('arm_body_angle', '')
+    correct_arm_angle = 0
+    correct_body_angle = 0
+    correct_arm_body_angle = 0
+    threshold = request.args.get('threshold', '')
+
     angle_correct, position_correct = model.wrong_bond(arm_angle, body_angle, arm_body_angle,
                                                                  correct_arm_angle, correct_body_angle,
                                                                  correct_arm_body_angle,
@@ -37,7 +43,9 @@ def get_name():
 def get_profile():
     if request.method == 'GET':
         name = request.args.get('name', '')
+        fans = request.args.get('fans', '')
         print(name)
+        print(fans)
         if(name == 'zzc'):
             return dict(name = 'zzc', fans = 1000)
         else:
