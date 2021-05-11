@@ -5,20 +5,30 @@ import requests
 model = mm.meta_model_calc()
 app = Flask(__name__)
 
-@app.route('/rightarmbody')
+@app.route('/rightarmbody', methods=['GET', 'POST'])
 def correct():
-    arm_angle = request.args.get('arm_angle', '')
-    body_angle = request.args.get('body_angle', '')
-    arm_body_angle = request.args.get('arm_body_angle', '')
     correct_arm_angle = 0
     correct_body_angle = 0
     correct_arm_body_angle = 0
-    threshold = request.args.get('threshold', '')
-
-    angle_correct, position_correct = model.wrong_bond(arm_angle, body_angle, arm_body_angle,
+    if request.method == 'GET':
+        arm_angle = request.args.get('arm_angle', '')
+        body_angle = request.args.get('body_angle', '')
+        arm_body_angle = request.args.get('arm_body_angle', '')
+        threshold = request.args.get('threshold', '')
+        angle_correct, position_correct = model.wrong_bond(arm_angle, body_angle, arm_body_angle,
+                                                           correct_arm_angle, correct_body_angle,
+                                                           correct_arm_body_angle,
+                                                           threshold)
+    elif request.method == 'POST':
+        user_pose_data = request.json
+        angle_correct, position_correct = model.wrong_bond(user_pose_data['arm_angle'], user_pose_data['body_angle'], user_pose_data['arm_body_angle'],
                                                                  correct_arm_angle, correct_body_angle,
                                                                  correct_arm_body_angle,
-                                                                 threshold)
+                                                           user_pose_data['threshold'])
+    else:
+        return 'error'
+
+
     if not angle_correct:
         return "you are correct, please do the next"
     elif angle_correct > 0:
@@ -53,7 +63,8 @@ def get_profile():
     elif request.method == 'POST':
         print(request.form)
         print(request.data)
-        print(request.json)
+        user = request.json
+        print(user['username']+1)
         return '1'
 
 # with app.test_request_context():
