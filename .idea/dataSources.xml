@@ -15,6 +15,7 @@
         <property name="yearIsDateType" value="false" />
       </driver-properties>
     </data-source>
+<<<<<<< HEAD
     <data-source source="LOCAL" name="flaskr.sqlite" uuid="4231ff9c-594f-463d-9682-ed715e57f316">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
@@ -24,5 +25,7 @@
         <property name="enable_load_extension" value="true" />
       </driver-properties>
     </data-source>
+=======
+>>>>>>> gitosc/master
   </component>
 </project>
