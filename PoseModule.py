@@ -57,6 +57,10 @@ class poseDetector():
             angle += 360
         if angle > 180:
             angle = 360 - angle
+        if first_angle < 0:
+            first_angle += 180
+        if second_angle < 0:
+            second_angle += 180
 
         # print(angle)
         # write

@@ -1,0 +1,97 @@
+//Post请求 Json格式提交
+POST http://127.0.0.1:5000/Squat 
+User-Agent: rest-client
+Accept-Language: en-GB,en-US;q=0.8,en;q=0.6,zh-CN;q=0.4
+Content-Type: application/json; charset=utf-8
+
+{"userid": "user1",
+"threshold":30,
+"user1":[
+ {
+        "name": "right_upLeg_joint", 
+        "location": { "x": 0.6433032751083374,  "y": 0.8360552191734314
+        }
+    }, 
+    {
+        "name": "right_forearm_joint", 
+        "location": { "x": 0.44045454263687134,  "y": 0.5550956726074219
+        }
+    }, 
+    {
+        "name": "left_leg_joint", 
+        "location": { "x": 0.5037940740585327,  "y": 0.882385790348053
+        }
+    }, 
+    {
+        "name": "left_hand_joint", 
+        "location": { "x": 0.3277397155761719,  "y": 0.5470648407936096
+        }
+    }, 
+    {
+        "name": "left_ear_joint", 
+        "location": { "x": 0.5040997862815857,  "y": 0.463681161403656
+        }
+    }, 
+    {
+        "name": "left_forearm_joint", 
+        "location": { "x": 0.42424267530441284,  "y": 0.5574146509170532
+        }
+    }, 
+    {
+        "name": "right_leg_joint", 
+        "location": { "x": 0.49405258893966675,  "y": 0.8211123943328857
+        }
+    }, 
+    {
+        "name": "right_foot_joint", 
+        "location": { "x": 0.5468686819076538,  "y": 0.9389370679855347
+        }
+    }, 
+    {
+        "name": "right_shoulder_1_joint", 
+        "location": { "x": 0.5339920520782471,  "y": 0.539411187171936
+        }
+    }, 
+    {
+        "name": "neck_1_joint", 
+        "location": { "x": 0.48165997862815857,  "y": 0.49031466245651245
+        }
+    }, 
+    {
+        "name": "left_upLeg_joint", 
+        "location": { "x": 0.6385695338249207,  "y": 0.8672776818275452
+        }
+    }, 
+    {
+        "name": "left_foot_joint", 
+        "location": { "x": 0.5586125254631042,  "y": 0.9931531548500061
+        }
+    }, 
+    {
+        "name": "right_hand_joint", 
+        "location": { "x": 0.34437593817710876,  "y": 0.5487604141235352
+        }
+    },  {
+        "name": "left_eye_joint", 
+        "location": { "x": 0.48568764328956604,  "y": 0.4646834433078766
+        }
+    }, {
+        "name": "head_joint", 
+        "location": { "x": 0.49101346731185913,  "y": 0.5064473748207092
+        }
+    }, {
+        "name": "right_eye_joint", 
+        "location": { "x": 0.4862593114376068,  "y": 0.46323713660240173
+        }
+    }, {
+        "name": "right_ear_joint", 
+        "location": { "x": 0.5046396255493164,  "y": 0.4606069326400757
+        }
+    }, {
+        "name": "left_shoulder_1_joint", 
+        "location": { "x": 0.5294294357299805,  "y": 0.5477473735809326
+        }
+    }
+
+]}
+
