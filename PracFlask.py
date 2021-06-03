@@ -3,13 +3,26 @@ import CalcRDC as CR
 import MetaModule as mm
 import correct as rb
 import redis
+import etcd
+import socket
 import CorrectWord
 
 model = mm.meta_model_calc()
-Pool = redis.ConnectionPool(host='127.0.0.1', port=6379, max_connections=10, decode_responses=True)
+Pool = redis.ConnectionPool(host='redis', port=6379, max_connections=10, decode_responses=True, password='root')
 app = Flask(__name__)
 user_dict = {}
 cw = CorrectWord.CorrectWord
+
+def register_etcd(service_name, port):
+    client = etcd.Client(host='127.0.0.1', port=2379)
+
+    host_name = socket.gethostname()
+    node_name = '/services/ai/%s' % (service_name)
+    print(client.get('/services/ai').value)
+    client.write(node_name, '%s:%s' % (host_name, port), ttl=30)
+    client.refresh(node_name, '%s:%s' % (host_name, port), ttl=60)
+    return node_name
+
 
 @app.route('/Squat', methods=['GET', 'POST'])
 def Squat():
@@ -147,6 +160,7 @@ def Squat():
 
     return res_value
 
-if __name__ == '__main__':
+#register_etcd('squat', 5000)
 
-    app.run()
+if __name__ == '__main__':
+    app.run(debug=True)
