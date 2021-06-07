@@ -1,0 +1,24 @@
+version: '3.4'
+
+services:
+  poseaicore:
+    image: poseaicore
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 5000:5000
+    depends_on: 
+      - redis
+    links: 
+      - redis
+        
+  redis:
+    image: daocloud.io/library/redis
+    container_name: docker_redis
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - ./conf/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./tests/dump.rdb:/data/dump.rdb
+    ports:
+      - 6379:6379
