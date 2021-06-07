@@ -1,5 +1,5 @@
 //Post请求 Json格式提交
-POST http://127.0.0.1:5000/Squat 
+POST http://127.0.0.1:5000/api/ai/correction/Squat
 User-Agent: rest-client
 Accept-Language: en-GB,en-US;q=0.8,en;q=0.6,zh-CN;q=0.4
 Content-Type: application/json; charset=utf-8

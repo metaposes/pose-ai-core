@@ -24,7 +24,7 @@ def register_etcd(service_name, port):
     return node_name
 
 
-@app.route('/Squat', methods=['GET', 'POST'])
+@app.route('/api/ai/correction/Squat', methods=['GET', 'POST'])
 def Squat():
 
     # if request.method == 'GET':
@@ -42,7 +42,6 @@ def Squat():
         userId = user_pose_data.get('userid')
         pose_data = user_pose_data.get(userId)
         # pose_name = user_pose_data.get('posename')
-        threshold = user_pose_data.get('threshold')
         current_user = user_dict.get(userId, None)
 
 
@@ -52,8 +51,13 @@ def Squat():
         # connection = db.get_db()
         r = redis.Redis(connection_pool=Pool)
         squat = []
+        threshold = []
+
         frame_name = r.keys('squat*')
         frame_name.sort()
+
+        threshold_name = r.keys('thresholdsquat*')
+        threshold_name.sort()
         frame_number = len(frame_name)
 
         # import data from database
@@ -66,6 +70,8 @@ def Squat():
         try:
             for i in frame_name:
                 squat.append(r.hgetall(i))
+            for i in threshold_name:
+                threshold.append(r.hgetall(i))
             correct_right_arm_angle = int(squat[(frame + 1) % frame_number]['rightarmangle'])
             correct_right_body_angle = int(squat[(frame + 1) % frame_number]['rightbodyangle'])
             correct_right_arm_body_angle = int(squat[(frame + 1) % frame_number]['rightarmbodyangle'])
@@ -74,6 +80,14 @@ def Squat():
             correct_left_arm_body_angle = int(squat[(frame + 1) % frame_number]['leftarmbodyangle'])
             correct_right_upLeg_angle = int(squat[(frame + 1) % frame_number]['rightupLegangle'])
             correct_right_upLeg_body_angle = int(squat[frame % frame_number]['rightupLegbodyangle'])
+
+            #threshold
+            right_arm_body_threshold = int(threshold[(frame+1) % frame_number]['rightarmbody'])
+            left_arm_body_threshold = int(threshold[(frame+1) % frame_number]['leftarmbody'])
+            right_leg_threshold = int(threshold[(frame+1) % frame_number]['rightupLegbody'])
+
+
+
 
             # standard pose data next frame 根据下一个poseframe取出
             next_right_upLeg_body_angle = int(squat[(frame + 1) % frame_number]['rightupLegbodyangle'])
@@ -113,7 +127,7 @@ def Squat():
     right_arm_angle, right_body_angle, right_arm_body_angle = model.findAngle(right_forearm_joint, right_shoulder_1_joint, right_upLeg_joint)
     correct_pattern1, angle1 = rb.correctModel(right_arm_angle, right_body_angle, right_arm_body_angle,
                                                  correct_right_arm_angle, correct_right_body_angle, correct_right_arm_body_angle,
-                                                 threshold).rightArmBodyUpAndDown()
+                                               right_arm_body_threshold).rightArmBodyUpAndDown()
     if correct_pattern1 == cw.BODY_UP:
         correct_pattern1 = cw.CORRECT
         angle1 = 0
@@ -124,7 +138,7 @@ def Squat():
     correct_pattern2, angle2 = rb.correctModel(left_arm_angle, left_body_angle, left_arm_body_angle,
                                                correct_left_arm_angle, correct_left_body_angle,
                                                correct_left_arm_body_angle,
-                                               threshold).leftArmBodyUpAndDown()
+                                               left_arm_body_threshold).leftArmBodyUpAndDown()
     if correct_pattern2 == cw.BODY_UP:
         correct_pattern2 = cw.CORRECT
         angle2 = 0
@@ -133,7 +147,7 @@ def Squat():
     right_body_angle, right_upLeg_angle, right_upLeg_body_angle = model.findAngle(right_shoulder_1_joint, right_upLeg_joint, right_leg_joint)
     correct_pattern3, angle3 = rb.correctModel(right_upLeg_angle, right_body_angle, right_upLeg_body_angle,
                                        correct_right_upLeg_angle, correct_right_body_angle, next_right_upLeg_body_angle,
-                                       threshold).rightLegbend()
+                                               right_leg_threshold).rightLegbend()
 
 
 
@@ -143,12 +157,14 @@ def Squat():
     user_record.calcRdc(right_upLeg_body_angle, correct_right_upLeg_body_angle, next_right_upLeg_body_angle)
     repeat_times = user_record.repeat_times
     duration = user_record.duration
-    completion = user_record.per
+    frame_complete = user_record.frame_complete
+    coach_complete = user_record.coach_complete
     frame_id = user_record.frame
 
 
 
-    res_value = dict(pose_frame=dict(name = str(frame_id), repeat_times = repeat_times, duration = duration, completion = completion),
+    res_value = dict(pose_frame=dict(name = str(frame_id), repeat_times = repeat_times, duration = duration, frame_complete = frame_complete,
+                                     coach_complete = coach_complete),
                     userid = userId,
                     correct = dict(
                     correct_pattern1 = dict(correct_word = correct_pattern1.value, angle = angle1),
@@ -163,4 +179,4 @@ def Squat():
 #register_etcd('squat', 5000)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
