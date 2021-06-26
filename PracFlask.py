@@ -8,7 +8,7 @@ import socket
 import CorrectWord
 
 model = mm.meta_model_calc()
-Pool = redis.ConnectionPool(host='127.0.0.1', port=6379, max_connections=10, decode_responses=True)
+Pool = redis.ConnectionPool(host='redis', port=6379, max_connections=10, decode_responses=True, password='root')
 app = Flask(__name__)
 user_dict = {}
 cw = CorrectWord.CorrectWord
