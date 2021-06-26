@@ -1,10 +1,11 @@
 //Post请求 Json格式提交
-POST http://127.0.0.1:5000/api/ai/correction/Squat
+POST http://127.0.0.1:5000/api/ai/correction
 User-Agent: rest-client
 Accept-Language: en-GB,en-US;q=0.8,en;q=0.6,zh-CN;q=0.4
 Content-Type: application/json; charset=utf-8
 
-{"userid": "user1",
+{"posename": "squat",
+"userid": "user1",
 "threshold":30,
 "user1":[
  {

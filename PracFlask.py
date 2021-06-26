@@ -8,7 +8,7 @@ import socket
 import CorrectWord
 
 model = mm.meta_model_calc()
-Pool = redis.ConnectionPool(host='redis', port=6379, max_connections=10, decode_responses=True, password='root')
+Pool = redis.ConnectionPool(host='127.0.0.1', port=6379, max_connections=10, decode_responses=True)
 app = Flask(__name__)
 user_dict = {}
 cw = CorrectWord.CorrectWord
@@ -24,8 +24,17 @@ def register_etcd(service_name, port):
     return node_name
 
 
-@app.route('/api/ai/correction/Squat', methods=['GET', 'POST'])
-def Squat():
+@app.route('/api/ai/correction', methods=['GET', 'POST'])
+def Dispatch():
+    if request.method == 'POST':
+        user_pose_data = request.json
+        posename = user_pose_data.get('posename')
+        if posename == 'squat':
+            return Squat(user_pose_data)
+        else:
+            return dict(success='no such pose')
+
+def Squat(user_pose_data):
 
     # if request.method == 'GET':
     #     arm_angle = int(request.args.get('arm_angle', ''))
@@ -37,88 +46,84 @@ def Squat():
     #                                                        correct_arm_body_angle,
     #                                                        threshold)
 
-    if request.method == 'POST':
-        user_pose_data = request.json
-        userId = user_pose_data.get('userid')
-        pose_data = user_pose_data.get(userId)
-        # pose_name = user_pose_data.get('posename')
-        current_user = user_dict.get(userId, None)
+    userId = user_pose_data.get('userid')
+    pose_data = user_pose_data.get(userId)
+    # pose_name = user_pose_data.get('posename')
+    current_user = user_dict.get(userId, None)
 
 
-        # standard pose data first frame 根据 posename 取出
-        # query = "SELECT *FROM squat"
-        # print(query)
-        # connection = db.get_db()
-        r = redis.Redis(connection_pool=Pool)
-        squat = []
-        threshold = []
+    # standard pose data first frame 根据 posename 取出
+    # query = "SELECT *FROM squat"
+    # print(query)
+    # connection = db.get_db()
+    r = redis.Redis(connection_pool=Pool)
+    squat = []
+    threshold = []
 
-        frame_name = r.keys('squat*')
-        frame_name.sort()
+    frame_name = r.keys('squat_*')
+    frame_name.sort()
 
-        threshold_name = r.keys('thresholdsquat*')
-        threshold_name.sort()
-        frame_number = len(frame_name)
+    threshold_name = r.keys('thresholdsquat_*')
+    threshold_name.sort()
+    frame_number = len(frame_name)
 
-        # import data from database
-        if current_user is None:
-            frame = 0
-            user_record = CR.greed(frame_number)
-        else:
-            frame = current_user['frame_id']
-            user_record = current_user['user_record']
-        try:
-            for i in frame_name:
-                squat.append(r.hgetall(i))
-            for i in threshold_name:
-                threshold.append(r.hgetall(i))
-            correct_right_arm_angle = int(squat[(frame + 1) % frame_number]['rightarmangle'])
-            correct_right_body_angle = int(squat[(frame + 1) % frame_number]['rightbodyangle'])
-            correct_right_arm_body_angle = int(squat[(frame + 1) % frame_number]['rightarmbodyangle'])
-            correct_left_arm_angle = int(squat[(frame + 1) % frame_number]['leftarmangle'])
-            correct_left_body_angle = int(squat[(frame + 1) % frame_number]['leftbodyangle'])
-            correct_left_arm_body_angle = int(squat[(frame + 1) % frame_number]['leftarmbodyangle'])
-            correct_right_upLeg_angle = int(squat[(frame + 1) % frame_number]['rightupLegangle'])
-            correct_right_upLeg_body_angle = int(squat[frame % frame_number]['rightupLegbodyangle'])
-
-            #threshold
-            right_arm_body_threshold = int(threshold[(frame+1) % frame_number]['rightarmbody'])
-            left_arm_body_threshold = int(threshold[(frame+1) % frame_number]['leftarmbody'])
-            right_leg_threshold = int(threshold[(frame+1) % frame_number]['rightupLegbody'])
-
-
-
-
-            # standard pose data next frame 根据下一个poseframe取出
-            next_right_upLeg_body_angle = int(squat[(frame + 1) % frame_number]['rightupLegbodyangle'])
-
-        except():
-            return dict(success=False)
-
-
-        #user pose data
-        right_upLeg_joint = pose_data[0].get('location')
-        right_forearm_joint = pose_data[1].get('location')
-        left_leg_joint = pose_data[2].get('location')
-        left_hand_joint = pose_data[3].get('location')
-        left_ear_joint = pose_data[4].get('location')
-        left_forearm_joint = pose_data[5].get('location')
-        right_leg_joint = pose_data[6].get('location')
-        right_foot_joint = pose_data[7].get('location')
-        right_shoulder_1_joint = pose_data[8].get('location')
-        neck_1_joint = pose_data[9].get('location')
-        left_upLeg_joint = pose_data[10].get('location')
-        left_foot_joint = pose_data[11].get('location')
-        right_hand_joint = pose_data[12].get('location')
-        left_eye_joint = pose_data[13].get('location')
-        head_joint = pose_data[14].get('location')
-        right_eye_joint = pose_data[15].get('location')
-        right_ear_joint = pose_data[16].get('location')
-        left_shoulder_1_joint = pose_data[17].get('location')
-
-
+    # import data from database
+    if current_user is None:
+        frame = 0
+        user_record = CR.greed(frame_number)
     else:
-        return 'Error'
+        frame = current_user['frame_id']
+        user_record = current_user['user_record']
+    try:
+        for i in frame_name:
+            squat.append(r.hgetall(i))
+        for i in threshold_name:
+            threshold.append(r.hgetall(i))
+        correct_right_arm_angle = int(squat[(frame + 1) % frame_number]['right_upper_arm'])
+        correct_right_body_angle = int(squat[(frame + 1) % frame_number]['right_body'])
+        correct_right_arm_body_angle = int(squat[(frame + 1) % frame_number]['right_arm_body'])
+        correct_left_arm_angle = int(squat[(frame + 1) % frame_number]['left_upper_arm'])
+        correct_left_body_angle = int(squat[(frame + 1) % frame_number]['left_body'])
+        correct_left_arm_body_angle = int(squat[(frame + 1) % frame_number]['left_arm_body'])
+        correct_right_upLeg_angle = int(squat[(frame + 1) % frame_number]['right_upper_leg'])
+        correct_right_upLeg_body_angle = int(squat[frame % frame_number]['right_leg_body'])
+
+        #threshold
+        right_arm_body_threshold = int(threshold[(frame+1) % frame_number]['rightarmbody'])
+        left_arm_body_threshold = int(threshold[(frame+1) % frame_number]['leftarmbody'])
+        right_leg_threshold = int(threshold[(frame+1) % frame_number]['rightupLegbody'])
+
+
+
+
+        # standard pose data next frame 根据下一个poseframe取出
+        next_right_upLeg_body_angle = int(squat[(frame + 1) % frame_number]['right_leg_body'])
+
+    except():
+        return dict(success=False)
+
+
+    #user pose data
+    right_upLeg_joint = pose_data[0].get('location')
+    right_forearm_joint = pose_data[1].get('location')
+    left_leg_joint = pose_data[2].get('location')
+    left_hand_joint = pose_data[3].get('location')
+    left_ear_joint = pose_data[4].get('location')
+    left_forearm_joint = pose_data[5].get('location')
+    right_leg_joint = pose_data[6].get('location')
+    right_foot_joint = pose_data[7].get('location')
+    right_shoulder_1_joint = pose_data[8].get('location')
+    neck_1_joint = pose_data[9].get('location')
+    left_upLeg_joint = pose_data[10].get('location')
+    left_foot_joint = pose_data[11].get('location')
+    right_hand_joint = pose_data[12].get('location')
+    left_eye_joint = pose_data[13].get('location')
+    head_joint = pose_data[14].get('location')
+    right_eye_joint = pose_data[15].get('location')
+    right_ear_joint = pose_data[16].get('location')
+    left_shoulder_1_joint = pose_data[17].get('location')
+
+
 
 
 
