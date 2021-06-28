@@ -2,6 +2,7 @@ version: '3.4'
 
 services:
   poseaicore:
+    container_name: poseaicore
     image: poseaicore
     build:
       context: .
@@ -22,3 +23,8 @@ services:
       - ./tests/dump.rdb:/data/dump.rdb
     ports:
       - 6379:6379
+
+networks:
+  default:
+    external:
+      name: etcd-net
