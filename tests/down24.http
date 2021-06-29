@@ -6,8 +6,7 @@ Content-Type: application/json; charset=utf-8
 
 {"posename": "squat",
 "userid": "user1",
-"threshold":30,
-"user1":[
+"posedata":[
  {
         "name": "right_upLeg_joint", 
         "location": { "x": 0.6433032751083374,  "y": 0.8360552191734314

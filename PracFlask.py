@@ -47,7 +47,7 @@ def Squat(user_pose_data):
     #                                                        threshold)
 
     userId = user_pose_data.get('userid')
-    pose_data = user_pose_data.get(userId)
+    pose_data = user_pose_data.get('posedata')
     # pose_name = user_pose_data.get('posename')
     current_user = user_dict.get(userId, None)
 
