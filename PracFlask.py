@@ -25,7 +25,7 @@ pose_name_keys = ['right_upLeg_joint',
 main_angle_names = ['right_arm', 'left_arm', 'right_leg', 'left_leg',
                     'left_leg_body', 'right_leg_body', 'right_arm_body', 'left_arm_body']
 # 映射集合
-model_date_k_v_map = {
+model_data_k_v_map = {
     'right_arm': {
         'joint_keys': ['right_shoulder_1_joint', 'right_forearm_joint', 'right_hand_joint'],
         'angle_keys': ['right_upper_arm', 'right_lower_arm', 'right_arm']
@@ -81,15 +81,15 @@ def get_model_data_from_origin_joints(user_data_origin_joint):
     for key in main_angle_names:
         res = model.findAngle(
             user_data_origin_joint.get(
-                model_date_k_v_map[key]['joint_keys'][0]),
+                model_data_k_v_map[key]['joint_keys'][0]),
             user_data_origin_joint.get(
-                model_date_k_v_map[key]['joint_keys'][1]),
+                model_data_k_v_map[key]['joint_keys'][1]),
             user_data_origin_joint.get(
-                model_date_k_v_map[key]['joint_keys'][2]))
+                model_data_k_v_map[key]['joint_keys'][2]))
 
-        model_data[model_date_k_v_map[key]['angle_keys'][0]] = res[0]
-        model_data[model_date_k_v_map[key]['angle_keys'][1]] = res[1]
-        model_data[model_date_k_v_map[key]['angle_keys'][2]] = res[2]
+        model_data[model_data_k_v_map[key]['angle_keys'][0]] = res[0]
+        model_data[model_data_k_v_map[key]['angle_keys'][1]] = res[1]
+        model_data[model_data_k_v_map[key]['angle_keys'][2]] = res[2]
 
     return model_data
 
@@ -109,8 +109,44 @@ def get_max_diff_angle(standard_model_data, user_model_data, thresholds):
         if diff >= threshold and diff > max_diff_angle:
             max_diff_angle = diff
             model_name = key
+            horizontal_angle_key = model_data_k_v_map[key]['angle_keys'][0]
+            horizontal_angle = user_model_data[horizontal_angle_key] - \
+                standard_model_data[horizontal_angle_key]
+    return None if max_diff_angle == 0 else {'name': model_name, 'diff_angle': max_diff_angle, 'horizontal_angle': horizontal_angle, 'correct_word': get_correct_info(model_name, horizontal_angle)}
 
-    return None if max_diff_angle == 0 else {'name': model_name, 'diff_angle': max_diff_angle}
+
+def get_correct_info(pose_name, horizontal_angle):
+    # 如：用户水平角度为-30度，标准水平角度为0度，则水平差距为「用户水平角度 - 标准水平角度 = -30度」
+    # 因此当水平差距角度 > 0 则为 True 表示需放下一些 而 < 0 则为False 表示需抬升
+    direction = horizontal_angle > 0
+    map = {
+        # right_arm
+        main_angle_names[0]: {
+            True: 'DOWN_RIGHT_ARM',
+            False: 'LIFT_RIGHT_ARM'
+        },
+        # left_arm
+        main_angle_names[1]: {
+            True: 'DOWN_LEFT_ARM',
+            False: 'LIFT_LEFT_ARM'
+        },
+        # right_leg
+        main_angle_names[2]: {
+            True: 'DOWN_RIGHT_LEG',
+            False: 'LIFT_RIGHT_LEG'
+        },
+        # left_leg
+        main_angle_names[3]: {
+            True: 'DOWN_LEFT_LEG',
+            False: 'LIFT_LEFT_LEG'
+        },
+        # right_arm_body
+        main_angle_names[6]: {
+            True: 'DOWN_RIGHT_ARM',
+            False: 'LIFT_RIGHT_ARM'
+        }
+    }
+    return map.get(pose_name, {True: None, False: None})[direction]
 
 
 def Squat(user_pose_data):

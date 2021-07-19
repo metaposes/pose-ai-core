@@ -26,10 +26,10 @@ class meta_model_calc():
             angle += 360
         if angle > 180:
             angle = 360 - angle
-        if first_angle < 0:
-            first_angle += 180
-        if second_angle < 0:
-            second_angle += 180
+        # if first_angle < 0:
+        #     first_angle += 180
+        # if second_angle < 0:
+        #     second_angle += 180
         return first_angle, second_angle, angle
 
     def wrong_bond(self,  first_direct_angle, second_direct_angle, indirect_angle,
