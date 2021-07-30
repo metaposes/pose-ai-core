@@ -4,6 +4,8 @@ import MetaModule as mm
 import correct as rb
 import redis
 import CorrectWord
+import datetime
+import random
 
 model = mm.meta_model_calc()
 Pool = redis.ConnectionPool(
@@ -11,6 +13,7 @@ Pool = redis.ConnectionPool(
 app = Flask(__name__)
 cw = CorrectWord.CorrectWord
 # 用户动作进度数据
+global user_dict
 user_dict = {}
 # Redis中所有模型名称集合
 all_model_data_keys = ['left_arm', 'left_lower_arm', 'left_upper_arm',
@@ -70,6 +73,75 @@ def Dispatch():
             return Squat(user_pose_data)
         else:
             return dict(success='no such pose')
+
+
+# 基础纠正方法
+def correct(user_pose_data):
+    global user_dict
+    # 用户ID
+    userid = user_pose_data.get("userid")
+    # 动作基础名称
+    posename = user_pose_data.get("posename")
+    # 动作数量
+    pose_nums = user_pose_data.get('keyposes', 0)
+    # 阶段标志：START / END
+    stage = user_pose_data.get('stage')
+    # 用户信息
+    user_info = user_dict.get(
+        userid, None)
+
+    # 初始化用户信息
+    if stage == 'START' or user_info is None:
+        user_info = {
+            'pose_nums': pose_nums,
+            'pose_idx': 0,
+            'start_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'pose_base_name': posename
+        }
+
+    # 获取当前动作计数
+    pose_idx = user_info.get('pose_idx', 0)
+    # 获取纠正角度值
+    correct_angle = get_max_diff_angle(user_pose_data)
+
+    # TODO data.pose_frame.duration -> 动作时间待处理
+    # TODO data.correct -> 动作纠正
+    # TODO data.pose_frame.video_playback -> 视频回放时间戳
+    # 响应结果
+    res = {
+        "code": 200,
+        "data": {
+            "posename": posename,
+            "userid": userid,
+            "correct": {},
+            "pose_frame": {
+                "pose_name": user_info.get('pose_base_name') + '_' + str(user_info.get('pose_idx')),
+                "coach_complete": {
+                    "total": user_info.get('pose_nums', 0),
+                    "current": user_info.get('pose_idx', 0)
+                }
+            }
+        }
+    }
+
+    # 当前动作正确 保存用户状态
+    if correct_angle is None:
+        user_info['pose_idx'] = pose_idx + 1
+        # 最初动作 返回录制标志
+        if pose_idx == 0:
+            res['data']['indication'] = 'record'
+
+    # 最终动作 返回分数
+    if stage == 'END' or user_info['pose_idx'] == user_info['pose_nums'] - 1:
+        user_info = {}
+        res['data']['score'] = {
+            'percentage': random.randint(80, 99)
+        }
+
+    # 保存用户数据
+    user_dict[userid] = user_info
+
+    return res
 
 
 # 用于从用户原始坐标数据生成对应的模型角度数据
@@ -150,6 +222,9 @@ def get_correct_info(pose_name, horizontal_angle):
 
 
 def Squat(user_pose_data):
+    return None
+
+def get_max_diff_angle(user_pose_data):
     # 用户ID
     user_id = user_pose_data.get('userid')
     # 姿势数据
@@ -157,7 +232,7 @@ def Squat(user_pose_data):
     # 模型基础名称
     model_base_name = user_pose_data.get('posename')
     # 当前用户
-    current_user = user_dict.get(user_id, None)
+    user_info = user_dict.get(user_id, None)
 
     # Redis连接对象
     r = redis.Redis(connection_pool=Pool)
@@ -180,17 +255,7 @@ def Squat(user_pose_data):
     threshold_keys.sort()
 
     # 获取用户动作进度数据
-    if current_user is None:
-        # 起始索引
-        idx = 0
-        # 用户记录
-        user_record = CR.greed(idx)
-        # 对应的动作数量
-        keys_len = len(key_pose_standard_joints_keys)
-    else:
-        idx = current_user['current_idx']
-        user_record = current_user['user_record']
-        keys_len = current_user['count']
+    current_post_count = user_info.get('pose_idx', 0)
 
     try:
         # 拼接所有的标准动作模型数据
@@ -202,17 +267,17 @@ def Squat(user_pose_data):
         # 提取标准动作模型角度数据
         for key in all_model_data_keys:
             key_pose_standard_joints[key] = float(
-                key_pose_standard_joints_arr[idx][key] or 0)
+                key_pose_standard_joints_arr[current_post_count][key] or 0)
         # 提取标准动作模型角度阈值
         for key in threshold_map_name_keys:
             key_pose_joints_threshold[key] = float(
-                key_pose_joints_threshold_arr[idx][key] or 0)
+                key_pose_joints_threshold_arr[current_post_count][key] or 0)
         # 收集原始用户节点数据
         for key in pose_name_keys:
             user_data_origin_joint[key] = pose_data.get(key) or {
                 'x': 0.0, 'y': 0.0}
     except():
-        return dict(success=False)
+        return False
 
     # 根据用户原始数据生成的模型数据
     model_data = get_model_data_from_origin_joints(user_data_origin_joint)
@@ -221,13 +286,7 @@ def Squat(user_pose_data):
     max_diff_angle = get_max_diff_angle(key_pose_standard_joints, model_data,
                                         key_pose_joints_threshold)
 
-    print(max_diff_angle)
-
-    # 保存用户状态
-    user_dict[user_id] = dict(
-        current_idx=(idx + 1) % keys_len, count=keys_len, user_record=user_record)
-
-    return dict(success=True)
+    return max_diff_angle
 
 
 if __name__ == '__main__':
