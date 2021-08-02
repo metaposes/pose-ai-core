@@ -104,16 +104,12 @@ def correct(user_pose_data):
     # 获取纠正角度值
     correct_angle = get_max_diff_angle(user_pose_data)
 
-    # TODO data.pose_frame.duration -> 动作时间待处理
-    # TODO data.correct -> 动作纠正
-    # TODO data.pose_frame.video_playback -> 视频回放时间戳
     # 响应结果
     res = {
         "code": 200,
         "data": {
             "posename": posename,
             "userid": userid,
-            "correct": {},
             "pose_frame": {
                 "pose_name": user_info.get('pose_base_name') + '_' + str(user_info.get('pose_idx')),
                 "coach_complete": {
@@ -124,9 +120,20 @@ def correct(user_pose_data):
         }
     }
 
+    # TODO data.pose_frame.duration -> 动作时间待处理
+    # TODO data.correct -> 动作纠正
+    # TODO data.pose_frame.video_playback -> 视频回放时间戳
+    # TODO 分数算法
+
     # 当前动作正确 保存用户状态
     if correct_angle is None:
         user_info['pose_idx'] = pose_idx + 1
+        # 准备下一个动作
+        res['correct'] = {
+            'correct_pattern1': {
+                'correct_term': 'NEXT_POSE'
+            }
+        }
         # 最初动作 返回录制标志
         if pose_idx == 0:
             res['data']['indication'] = 'record'
