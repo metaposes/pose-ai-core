@@ -118,8 +118,8 @@ def test(user_pose_data):
             'userid': user_id,
             'pose_frame': {
                 'coach_complete': {
-                    'total': 4,
-                    'current': random.randint(1, 4)
+                    'total': 33,
+                    'current': int(count / 100)
                 },
                 'frame_complete': random.uniform(0, 100),
                 'repeat_times': {
@@ -154,9 +154,6 @@ def test(user_pose_data):
         res['start_time'] = user_info.get('start_time')
         res['end_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         count = 0
-
-    # 进行计数
-    res['counter'] = 3300 if count == 0 else count
 
     # 初始化处理
     if user_dict.get(user_id) is None or init_flag:
