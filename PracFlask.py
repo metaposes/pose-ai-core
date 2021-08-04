@@ -76,7 +76,7 @@ def Dispatch():
         else:
             return correct(user_pose_data)
         
-def init_logging_config(user_id, user_info):
+def init_logging_config():
     # 判断文件夹是否存在，不存在则创建
     Path('./logs').mkdir(parents=True, exist_ok=True)
     logging.basicConfig(filename='./logs/user_pose_data.log',
@@ -167,7 +167,7 @@ def test(user_pose_data):
     user_dict[user_id]['count'] = count
 
     # 初始化日志基础配置
-    init_logging_config(user_id, user_dict[user_id])
+    init_logging_config()
     logging.info('当前用户:' + user_id + '， 计数为:' + str(count) +
                  '，起始时间为：' + user_dict[user_id]['start_time'])
     logging.info('获取到的用户数据为:' + str(user_pose_data))
@@ -189,6 +189,9 @@ def correct(user_pose_data):
     user_info = user_dict.get(
         userid, None)
 
+    # 初始化日志基础配置
+    init_logging_config()
+
     # 初始化用户信息
     if stage == 'START' or user_info is None:
         user_info = {
@@ -197,6 +200,9 @@ def correct(user_pose_data):
             'start_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'pose_base_name': posename
         }
+
+    logging.info('当前用户:' + userid + ', 起始时间为：' + user_info['start_time'])
+    logging.info('获取到的用户数据为:' + str(user_pose_data))
 
     # 获取当前动作计数
     pose_idx = user_info.get('pose_idx', 0)
@@ -224,27 +230,28 @@ def correct(user_pose_data):
     # TODO data.pose_frame.video_playback -> 视频回放时间戳
     # TODO 分数算法
 
-    # 当前动作正确 保存用户状态
-    if correct_angle_info is None:
-        user_info['pose_idx'] = pose_idx + 1
-        # 准备下一个动作
-        res['correct'] = {
-            'correct_pattern1': {
-                'correct_term': 'NEXT_POSE'
+    if correct_angle_info != False:
+        # 当前动作正确 保存用户状态
+        if correct_angle_info is None:
+            user_info['pose_idx'] = pose_idx + 1
+            # 准备下一个动作
+            res['correct'] = {
+                'correct_pattern1': {
+                    'correct_term': 'NEXT_POSE'
+                }
             }
-        }
-        # 最初动作 返回录制标志
-        if pose_idx == 0:
-            res['data']['indication'] = 'record'
-    elif correct_angle_info.get('correct_word'):
-        # 动作不匹配 生成纠正话术
-        res['data']['correct'] = {
-            'correct_pattern1': {
-                'correct_angle': correct_angle_info.get('standard_angle'),
-                'current_angle': correct_angle_info.get('user_angle'),
-                'correct_term': correct_angle_info.get('correct_word')
+            # 最初动作 返回录制标志
+            if pose_idx == 0:
+                res['data']['indication'] = 'record'
+        elif correct_angle_info.get('correct_word'):
+            # 动作不匹配 生成纠正话术
+            res['data']['correct'] = {
+                'correct_pattern1': {
+                    'correct_angle': correct_angle_info.get('standard_angle'),
+                    'current_angle': correct_angle_info.get('user_angle'),
+                    'correct_term': correct_angle_info.get('correct_word')
+                }
             }
-        }
 
     # 最终动作 返回分数
     if stage == 'END' or user_info['pose_idx'] == user_info['pose_nums'] - 1:
@@ -255,6 +262,8 @@ def correct(user_pose_data):
 
     # 保存用户数据
     user_dict[userid] = user_info
+
+    logging.info('返回数据为：' + str(res))
 
     return res
 
@@ -383,6 +392,9 @@ def get_max_diff_angle_info(user_pose_data):
     model_base_name = user_pose_data.get('posename')
     # 当前用户
     user_info = user_dict.get(user_id, {})
+
+    if pose_data is None:
+        return False
 
     # Redis连接对象
     r = redis.Redis(connection_pool=Pool)
