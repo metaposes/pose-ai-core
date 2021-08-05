@@ -64,17 +64,6 @@ model_data_k_v_map = {
         'angle_keys': ['left_upper_arm', 'left_body', 'left_arm_body']
     }
 }
-
-
-@app.route('/api/ai/correction', methods=['GET', 'POST'])
-def Dispatch():
-    if request.method == 'POST':
-        user_pose_data = request.json
-        posename = user_pose_data.get('posename')
-        if posename == 'test':
-            return test(user_pose_data)
-        else:
-            return correct(user_pose_data)
         
 def init_logging_config():
     # 判断文件夹是否存在，不存在则创建
@@ -83,190 +72,6 @@ def init_logging_config():
                         format='%(asctime)s - %(levelname)s -%(module)s:  %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S %p',
                         level=10)
-
-def test(user_pose_data):
-    global user_dict
-    # 用户ID
-    user_id = user_pose_data.get('userid')
-    # 用户信息
-    user_info = user_dict.get(user_id, {'count': 0})
-    # stage
-    stage = user_pose_data.get('stage')
-    # 初始化标志
-    init_flag = stage == 'START'
-    # 计数器
-    count = 0 if init_flag else user_info.get('count')
-
-    print('接收到用户{', user_id, '}的请求，用户进度信息：', user_info)
-
-    # 1请准备就绪 -> 2准备 -> 3伸展右手 -> 4下一个动作 -> 5垂放右手 -> 6完成 -> 7得分
-    correct_word_map = {
-        1: 'LET_POSE_READY',
-        500: 'ACTION_PREPARE',
-        1500: 'LIFT_RIGHT_ARM',
-        2000: 'NEXT_POSE',
-        2500: 'DOWN_RIGHT_ARM',
-        3000: 'COMPLETE'
-    }
-
-    count += 1
-
-    res = {
-        'code': 200,
-        'data': {
-            'posename': 'test',
-            'userid': user_id,
-            'pose_frame': {
-                'coach_complete': {
-                    'total': 33,
-                    'current': int(count / 100)
-                },
-                'frame_complete': random.uniform(0, 100),
-                'repeat_times': {
-                    'total': 3300,
-                    'count': count
-                }
-            }
-        }
-    }
-
-    if count == 400:
-        res['data']['indication'] = 'record'
-
-    if count == 100:
-        res['data']['pose_frame']['video_playback'] = {
-            'start_time': float(str(random.randint(0, 4)) + '.' + str(random.randint(0, 99))),
-            'end_time': float(str(random.randint(5, 9)) + '.' + str(random.randint(0, 99)))
-        }
-
-    if correct_word_map.get(count):
-        res['data']['correct'] = {
-            'correct_pattern1': {
-                'correct_term': correct_word_map[count],
-                'current_angle': random.uniform(0, 180),
-                'correct_angle': random.uniform(0, 180)
-            }
-        }
-    elif count == 3300 or stage == 'END':
-        res['data']['score'] = {
-            'percentage': random.randint(80, 99)
-        }
-        res['start_time'] = user_info.get('start_time')
-        res['end_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        count = 0
-
-    # 初始化处理
-    if user_dict.get(user_id) is None or init_flag:
-        start_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        user_dict[user_id] = {
-            'start_time': start_time,
-        }
-        res['start_time'] = start_time
-
-    # 储存用户进度信息
-    user_dict[user_id]['count'] = count
-
-    # 初始化日志基础配置
-    init_logging_config()
-    logging.info('当前用户:' + user_id + '， 计数为:' + str(count) +
-                 '，起始时间为：' + user_dict[user_id]['start_time'])
-    logging.info('获取到的用户数据为:' + str(user_pose_data))
-    logging.info('返回数据为：' + str(res))
-    return res
-
-# 基础纠正方法
-def correct(user_pose_data):
-    global user_dict
-    # 用户ID
-    userid = user_pose_data.get("userid")
-    # 动作基础名称
-    posename = user_pose_data.get("posename")
-    # 动作数量
-    pose_nums = user_pose_data.get('keyposes', 0)
-    # 阶段标志：START / END
-    stage = user_pose_data.get('stage')
-    # 用户信息
-    user_info = user_dict.get(
-        userid, None)
-
-    # 初始化日志基础配置
-    init_logging_config()
-
-    # 初始化用户信息
-    if stage == 'START' or user_info is None:
-        user_info = {
-            'pose_nums': pose_nums,
-            'pose_idx': 0,
-            'start_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'pose_base_name': posename
-        }
-
-    logging.info('当前用户:' + userid + ', 起始时间为：' + user_info['start_time'])
-    logging.info('获取到的用户数据为:' + str(user_pose_data))
-
-    # 获取当前动作计数
-    pose_idx = user_info.get('pose_idx', 0)
-    # 获取纠正角度信息
-    correct_angle_info = get_max_diff_angle_info(user_pose_data)
-
-    # 响应结果
-    res = {
-        "code": 200,
-        "data": {
-            "posename": posename,
-            "userid": userid,
-            "pose_frame": {
-                # "pose_name": user_info.get('pose_base_name') + '_' + str(user_info.get('pose_idx')),
-                "coach_complete": {
-                    "total": user_info.get('pose_nums', 0),
-                    "current": user_info.get('pose_idx', 0)
-                }
-            }
-        }
-    }
-
-    # TODO data.pose_frame.duration -> 动作时间待处理
-    # TODO data.correct -> 动作纠正
-    # TODO data.pose_frame.video_playback -> 视频回放时间戳
-    # TODO 分数算法
-
-    if correct_angle_info != False:
-        # 当前动作正确 保存用户状态
-        if correct_angle_info is None:
-            user_info['pose_idx'] = pose_idx + 1
-            # 准备下一个动作
-            res['correct'] = {
-                'correct_pattern1': {
-                    'correct_term': 'NEXT_POSE'
-                }
-            }
-            # 最初动作 返回录制标志
-            if pose_idx == 0:
-                res['data']['indication'] = 'record'
-        elif correct_angle_info.get('correct_word'):
-            # 动作不匹配 生成纠正话术
-            res['data']['correct'] = {
-                'correct_pattern1': {
-                    'correct_angle': correct_angle_info.get('standard_angle'),
-                    'current_angle': correct_angle_info.get('user_angle'),
-                    'correct_term': correct_angle_info.get('correct_word')
-                }
-            }
-
-    # 最终动作 返回分数
-    if stage == 'END' or user_info['pose_idx'] == user_info['pose_nums'] - 1:
-        user_info = {}
-        res['data']['score'] = {
-            'percentage': random.randint(80, 99)
-        }
-
-    # 保存用户数据
-    user_dict[userid] = user_info
-
-    logging.info('返回数据为：' + str(res))
-
-    return res
-
 
 # 用于从用户原始坐标数据生成对应的模型角度数据
 def get_model_data_from_origin_joints(user_data_origin_joint):
@@ -338,7 +143,7 @@ def get_correct_info(pose_name, diff_angle):
     map = {
         # right_arm
         main_angle_names[0]: {
-            True: 'RIGHT_ARM_NEG',
+            True: 'RIGHT_ARM_NEGA',
             False: 'RIGHT_ARM_POSI'
         },
         # left_arm
@@ -450,6 +255,203 @@ def get_max_diff_angle_info(user_pose_data):
 
     return max_diff_angle_info
 
+def test(user_pose_data):
+    global user_dict
+    # 用户ID
+    user_id = user_pose_data.get('userid')
+    # 用户信息
+    user_info = user_dict.get(user_id, {'count': 0})
+    # stage
+    stage = user_pose_data.get('stage')
+    # 初始化标志
+    init_flag = stage == 'START'
+    # 计数器
+    count = 0 if init_flag else user_info.get('count')
+
+    print('接收到用户{', user_id, '}的请求，用户进度信息：', user_info)
+
+    # 1请准备就绪 -> 2准备 -> 3伸展右手 -> 4下一个动作 -> 5垂放右手 -> 6完成 -> 7得分
+    correct_word_map = {
+        1: 'LET_POSE_READY',
+        500: 'ACTION_PREPARE',
+        1500: 'LIFT_RIGHT_ARM',
+        2000: 'NEXT_POSE',
+        2500: 'DOWN_RIGHT_ARM',
+        3000: 'COMPLETE'
+    }
+
+    count += 1
+
+    res = {
+        'code': 200,
+        'data': {
+            'posename': 'test',
+            'userid': user_id,
+            'pose_frame': {
+                'coach_complete': {
+                    'total': 33,
+                    'current': int(count / 100)
+                },
+                'frame_complete': random.uniform(0, 100),
+                'repeat_times': {
+                    'total': 3300,
+                    'count': count
+                }
+            }
+        }
+    }
+
+    if count == 400:
+        res['data']['indication'] = 'record'
+
+    if count == 100:
+        res['data']['pose_frame']['video_playback'] = {
+            'start_time': float(str(random.randint(0, 4)) + '.' + str(random.randint(0, 99))),
+            'end_time': float(str(random.randint(5, 9)) + '.' + str(random.randint(0, 99)))
+        }
+
+    if correct_word_map.get(count):
+        res['data']['correct'] = {
+            'correct_pattern1': {
+                'correct_term': correct_word_map[count],
+                'current_angle': random.uniform(0, 180),
+                'correct_angle': random.uniform(0, 180)
+            }
+        }
+    elif count == 3300 or stage == 'END':
+        res['data']['score'] = {
+            'percentage': random.randint(80, 99)
+        }
+        res['start_time'] = user_info.get('start_time')
+        res['end_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        count = 0
+
+    # 初始化处理
+    if user_dict.get(user_id) is None or init_flag:
+        start_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        user_dict[user_id] = {
+            'start_time': start_time,
+        }
+        res['start_time'] = start_time
+
+    # 储存用户进度信息
+    user_dict[user_id]['count'] = count
+
+    # 初始化日志基础配置
+    init_logging_config()
+    logging.info('当前用户:' + user_id + '， 计数为:' + str(count) +
+                 '，起始时间为：' + user_dict[user_id]['start_time'])
+    logging.info('获取到的用户数据为:' + str(user_pose_data))
+    logging.info('返回数据为：' + str(res))
+    return res
+
+# 基础纠正方法
+def correct(user_pose_data):
+    global user_dict
+    # 用户ID
+    userid = user_pose_data.get("userid")
+    # 动作基础名称
+    posename = user_pose_data.get("posename")
+    # 动作数量
+    pose_nums = user_pose_data.get('keyposes', 0)
+    # 阶段标志：START / END
+    stage = user_pose_data.get('stage')
+    # 用户初始信息
+    init_user_info = {
+            'pose_nums': pose_nums,
+            'pose_idx': 0,
+            'start_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'pose_base_name': posename
+    }
+    # 用户信息
+    user_info = user_dict.get(userid, init_user_info)
+
+    # 初始化用户信息
+    if stage == 'START' or user_info is None:
+        user_info = init_user_info
+
+    logging.info('当前用户:' + userid + ', 起始时间为：' + user_info.get('start_time', None))
+    logging.info('获取到的用户数据为:' + str(user_pose_data))
+
+    # 获取当前动作计数
+    pose_idx = user_info.get('pose_idx', 0)
+    # 获取纠正角度信息
+    correct_angle_info = get_max_diff_angle_info(user_pose_data)
+
+    # 响应结果
+    res = {
+        "code": 200,
+        "data": {
+            "posename": posename,
+            "userid": userid,
+            "pose_frame": {
+                # "pose_name": user_info.get('pose_base_name') + '_' + str(user_info.get('pose_idx')),
+                "coach_complete": {
+                    "total": user_info.get('pose_nums', 0),
+                    "current": user_info.get('pose_idx', 0)
+                }
+            }
+        }
+    }
+
+    # TODO data.pose_frame.duration -> 动作时间待处理
+    # TODO data.correct -> 动作纠正
+    # TODO data.pose_frame.video_playback -> 视频回放时间戳
+    # TODO data.pose_frame.pose_name -> 模型名称
+
+    if correct_angle_info != False:
+        # 当前动作正确 保存用户状态
+        if correct_angle_info is None:
+            user_info['pose_idx'] = pose_idx + 1
+            # 准备下一个动作
+            res['correct'] = {
+                'correct_pattern1': {
+                    'correct_term': 'NEXT_POSE'
+                }
+            }
+            # 最初动作 返回录制标志
+            if pose_idx == 0:
+                res['data']['indication'] = 'record'
+        elif correct_angle_info.get('correct_word'):
+            # 动作不匹配 生成纠正话术
+            res['data']['correct'] = {
+                'correct_pattern1': {
+                    'correct_angle': correct_angle_info.get('standard_angle'),
+                    'current_angle': correct_angle_info.get('user_angle'),
+                    'correct_term': correct_angle_info.get('correct_word')
+                }
+            }
+
+    # 最终动作 返回分数
+    if stage == 'END' or user_info['pose_idx'] == user_info['pose_nums'] - 1:
+        user_dict.pop(userid, None)
+        total = user_info.get('pose_nums', 1)
+        current = user_info.get('pose_idx', 0)
+        # 根据进度生成分数
+        score = int(current / total * 100 + random.randint(0, 9))
+        res['data']['score'] = {
+            'percentage': score
+        }
+    else:
+        # 保存用户数据
+        user_dict[userid] = user_info
+
+    logging.info('返回数据为：' + str(res))
+
+    return res
+
+@app.route('/api/ai/correction', methods=['GET', 'POST'])
+def Dispatch():
+    # 初始化日志基础配置
+    init_logging_config()
+    if request.method == 'POST':
+        user_pose_data = request.json
+        print('获取到的用户数据为:' + str(user_pose_data))
+        posename = user_pose_data.get('posename')
+        if posename == 'test':
+            return test(user_pose_data)
+        else:
+            return correct(user_pose_data)
 
 if __name__ == '__main__':
     app.run(debug=True)
