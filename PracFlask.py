@@ -4,6 +4,7 @@ import MetaModule as mm
 import correct as rb
 import redis
 import CorrectWord
+import time
 import datetime
 import random
 import logging
@@ -32,54 +33,63 @@ main_angle_names = ['right_arm', 'left_arm', 'right_leg', 'left_leg',
 # 映射集合
 model_data_k_v_map = {
     'right_arm': {
+        'swap': 'left_arm',
         'joint_keys': ['right_shoulder_1_joint', 'right_forearm_joint', 'right_hand_joint'],
         'angle_keys': ['right_upper_arm', 'right_lower_arm', 'right_arm']
     },
     'left_arm': {
+        'swap': 'right_arm',
         'joint_keys': ['left_shoulder_1_joint', 'left_forearm_joint', 'left_hand_joint'],
         'angle_keys': ['left_upper_arm', 'left_lower_arm', 'left_arm']
     },
     'right_leg': {
+        'swap': 'left_leg',
         'joint_keys': ['right_upLeg_joint', 'right_leg_joint', 'right_foot_joint'],
         'angle_keys': ['right_upper_leg', 'right_lower_leg', 'right_leg']
     },
     'left_leg': {
+        'swap': 'right_leg',
         'joint_keys': ['left_upLeg_joint', 'left_leg_joint', 'left_foot_joint'],
         'angle_keys': ['left_upper_leg', 'left_lower_leg', 'left_leg']
     },
     'left_leg_body': {
+        'swap': 'right_leg_body',
         'joint_keys': ['left_shoulder_1_joint', 'left_upLeg_joint', 'left_foot_joint'],
         'angle_keys': ['left_body', 'left_upper_leg', 'left_leg_body']
     },
     'right_leg_body': {
+        'swap': 'left_leg_body',
         'joint_keys': ['right_shoulder_1_joint', 'right_upLeg_joint', 'right_foot_joint'],
         'angle_keys': ['right_body', 'right_upper_leg', 'right_leg_body']
     },
     'right_arm_body': {
+        'swap': 'left_arm_body',
         'joint_keys': ['right_forearm_joint', 'right_shoulder_1_joint', 'right_upLeg_joint'],
         'angle_keys': ['right_upper_arm', 'right_body', 'right_arm_body']
     },
     'left_arm_body': {
+        'swap': 'right_arm_body',
         'joint_keys': ['left_forearm_joint', 'left_shoulder_1_joint', 'left_upLeg_joint'],
         'angle_keys': ['left_upper_arm', 'left_body', 'left_arm_body']
     }
 }
-        
+
 def init_logging_config():
     # 判断文件夹是否存在，不存在则创建
     Path('./logs').mkdir(parents=True, exist_ok=True)
-    logging.basicConfig(filename='./logs/user_pose_data.log',
+    logging.basicConfig(filename='./logs/user_pose_data_' + time.strftime("%Y-%m-%d", time.localtime()) + '.log',
                         format='%(asctime)s - %(levelname)s -%(module)s:  %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S %p',
                         level=10)
 
 # 用于从用户原始坐标数据生成对应的模型角度数据
-def get_model_data_from_origin_joints(user_data_origin_joint):
+def get_model_data_from_origin_joints(user_data_origin_joint, camera):
     # 待返回的模型数据
     model_data = {}
 
     # 计算 各个 对应角度结果
     for key in main_angle_names:
+        swap_key = model_data_k_v_map[key]['swap'] if camera == 1 else key
         res = model.findAngle(
             user_data_origin_joint.get(
                 model_data_k_v_map[key]['joint_keys'][0]),
@@ -88,12 +98,12 @@ def get_model_data_from_origin_joints(user_data_origin_joint):
             user_data_origin_joint.get(
                 model_data_k_v_map[key]['joint_keys'][2]))
 
-        model_data[model_data_k_v_map[key]['angle_keys'][0]] = res[0]
-        model_data[model_data_k_v_map[key]['angle_keys'][1]] = res[1]
-        model_data[model_data_k_v_map[key]['angle_keys'][2]] = res[2]
+
+        model_data[model_data_k_v_map[swap_key]['angle_keys'][0]] = res[0]
+        model_data[model_data_k_v_map[swap_key]['angle_keys'][1]] = res[1]
+        model_data[model_data_k_v_map[swap_key]['angle_keys'][2]] = res[2]
 
     return model_data
-
 
 # 将标准模型数据与用户模型数据根据阈值进行对比返回差异最大的角度
 def get_max_diff_angle(standard_model_data, user_model_data, thresholds):
@@ -113,8 +123,7 @@ def get_max_diff_angle(standard_model_data, user_model_data, thresholds):
         r = user_model_data[key]
         diff_angle = r - l
         max_diff_angle = abs(diff_angle)
-        # threshold = thresholds.get(key) or 0
-        threshold = 10
+        threshold = thresholds.get(key) or 90
         print('获取到', key, '的标准角度值：', l)
         print('获取到', key, '的用户角度值：', r)
         print('角度相差值为：', diff_angle)
@@ -134,7 +143,7 @@ def get_max_diff_angle(standard_model_data, user_model_data, thresholds):
                 'standard_angle': l
             }
             
-    return res
+    return res if res['diff_angle'] != 0.0 else True
 
 def get_correct_info(pose_name, diff_angle):
     # 如：用户水平角度为-30度，标准水平角度为0度，则水平差距为「用户水平角度 - 标准水平角度 = -30度」
@@ -185,9 +194,6 @@ def get_correct_info(pose_name, diff_angle):
     return map.get(pose_name, {True: None, False: None})[direction]
 
 
-def Squat(user_pose_data):
-    return None
-
 def get_max_diff_angle_info(user_pose_data):
     # 用户ID
     user_id = user_pose_data.get('userid')
@@ -195,6 +201,8 @@ def get_max_diff_angle_info(user_pose_data):
     pose_data = user_pose_data.get('posedata')
     # 模型基础名称
     model_base_name = user_pose_data.get('posename')
+    camera = user_pose_data.get('camera', 1)
+
     # 当前用户
     user_info = user_dict.get(user_id, {})
 
@@ -203,10 +211,6 @@ def get_max_diff_angle_info(user_pose_data):
 
     # Redis连接对象
     r = redis.Redis(connection_pool=Pool)
-    # 动作模型标准数据集合
-    key_pose_standard_joints_arr = []
-    # 动作模型数据角度阈值集合
-    key_pose_joints_threshold_arr = []
     # 动作模型标准数据
     key_pose_standard_joints = {}
     # 动作模型数据角度阈值
@@ -214,31 +218,20 @@ def get_max_diff_angle_info(user_pose_data):
     # 用户数据原始坐标集合
     user_data_origin_joint = {}
 
-    # 模型基础名称对应缓存中的所有标准数据Key集合
-    key_pose_standard_joints_keys = r.keys(model_base_name + '_*')
-    key_pose_standard_joints_keys.sort()
-    # 模型基础名称对应缓存中的所有角度阈值Key集合
-    threshold_keys = r.keys('threshold_' + model_base_name + '_*')
-    threshold_keys.sort()
-
     # 获取用户动作进度数据
-    current_post_count = user_info.get('pose_idx', 0)
-
+    pose_idx = user_info.get('pose_idx', 0)
+    pose_info_key = model_base_name + '_' + str(pose_idx)
+    threshold_key = 'threshold_' + model_base_name + '_' + str(pose_idx)
     try:
-        # 拼接所有的标准动作模型数据
-        for key in key_pose_standard_joints_keys:
-            key_pose_standard_joints_arr.append(r.hgetall(key))
-        # 拼接所有的阈值数据
-        for key in threshold_keys:
-            key_pose_joints_threshold_arr.append(r.hgetall(key))
-        # 提取标准动作模型角度数据
-        for key in all_model_data_keys:
-            key_pose_standard_joints[key] = float(
-                key_pose_standard_joints_arr[current_post_count][key] or 0)
-        # 提取标准动作模型角度阈值
-        # for key in threshold_map_name_keys:
-        #     key_pose_joints_threshold[key] = float(
-        #         key_pose_joints_threshold_arr[current_post_count][key] or 0)
+        # 拼接标准动作模型数据
+        for key,value in r.hgetall(pose_info_key).items():
+            if key in all_model_data_keys:
+                key_pose_standard_joints[key] = float(value)
+
+        # 拼接阈值数据
+        for key,value in r.hgetall(threshold_key).items():
+            key_pose_joints_threshold[key] = float(value)
+
         # 收集原始用户节点数据
         for key in pose_name_keys:
             user_data_origin_joint[key] = pose_data.get(key) or {
@@ -247,13 +240,57 @@ def get_max_diff_angle_info(user_pose_data):
         return False
 
     # 根据用户原始数据生成的模型数据
-    model_data = get_model_data_from_origin_joints(user_data_origin_joint)
+    model_data = get_model_data_from_origin_joints(user_data_origin_joint, camera)
 
     # 差异最大角度 {'name': 'xxx', 'diff_angle': 78.281, 'correct_word': 'LEFT_ARM_POSI'}
     max_diff_angle_info = get_max_diff_angle(key_pose_standard_joints, model_data,
                                         key_pose_joints_threshold)
 
     return max_diff_angle_info
+
+def ensure_required_parameter(user_pose_data):
+    res = {
+        'status': True
+    }
+    if user_pose_data is None:
+        res['correct_term'] = 'MISSING_MAIN_BODY'
+    elif user_pose_data.get('userid') is None:
+        res['correct_term'] = 'MISSING_USER_ID'
+    elif user_pose_data.get('posename') is None:
+        res['correct_term'] = 'MISSING_POSE_NAME'
+
+    if user_pose_data is not None and res.get('correct_term') is None:
+        stage = user_pose_data.get('stage')
+        if stage == 'START':
+            if user_pose_data.get('keyposes') is None:
+                res['correct_term'] = 'MISSING_KEY_POSE_NUM'
+        elif stage != 'END':
+            if user_pose_data.get('posedata') is None:
+                res['correct_term'] = 'MISSING_POSEDATA'
+
+    if res.get('correct_term'):
+        res['status'] = False
+    return res
+
+def ensure_can_continue_correct(user_info):
+    current_time = int(time.time())
+    last_match_time = user_info.get('last_match_time', 0)
+    duration = user_info.get('duration', 0)
+    if duration != 0:
+        diff = int(current_time - last_match_time)
+        if diff < duration:
+            return duration - diff
+    return True
+
+def init_user_info(pose_nums, pose_base_name):
+    return {
+        'pose_nums': pose_nums,
+        'pose_idx': 0,
+        'correct_count': 0,
+        'start_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'start_timestamp': int(time.time()),
+        'pose_base_name': pose_base_name
+    }
 
 def test(user_pose_data):
     global user_dict
@@ -337,8 +374,6 @@ def test(user_pose_data):
     # 储存用户进度信息
     user_dict[user_id]['count'] = count
 
-    # 初始化日志基础配置
-    init_logging_config()
     logging.info('当前用户:' + user_id + '， 计数为:' + str(count) +
                  '，起始时间为：' + user_dict[user_id]['start_time'])
     logging.info('获取到的用户数据为:' + str(user_pose_data))
@@ -348,47 +383,73 @@ def test(user_pose_data):
 # 基础纠正方法
 def correct(user_pose_data):
     global user_dict
+
+    # 确保关键参数存在
+    verify_info = ensure_required_parameter(user_pose_data)
+
+    if verify_info.get('status', False) is not True:
+        return {'code': 200, 'data': {
+            'correct': {
+                'correct_pattern2': {
+                    'correct_term': verify_info.get('correct_term')
+                }
+            }
+        }}
+
     # 用户ID
     userid = user_pose_data.get("userid")
     # 动作基础名称
-    posename = user_pose_data.get("posename")
+    pose_base_name = user_pose_data.get("posename")
     # 动作数量
     pose_nums = user_pose_data.get('keyposes', 0)
     # 阶段标志：START / END
     stage = user_pose_data.get('stage')
-    # 用户初始信息
-    init_user_info = {
-            'pose_nums': pose_nums,
-            'pose_idx': 0,
-            'start_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'pose_base_name': posename
-    }
     # 用户信息
-    user_info = user_dict.get(userid, init_user_info)
+    user_info = user_dict.get(userid, init_user_info(pose_nums, pose_base_name))
 
     # 初始化用户信息
     if stage == 'START' or user_info is None:
-        user_info = init_user_info
+        user_info = init_user_info(pose_nums, pose_base_name)
 
     logging.info('当前用户:' + userid + ', 起始时间为：' + user_info.get('start_time', None))
     logging.info('获取到的用户数据为:' + str(user_pose_data))
 
     # 获取当前动作计数
     pose_idx = user_info.get('pose_idx', 0)
-    # 获取纠正角度信息
-    correct_angle_info = get_max_diff_angle_info(user_pose_data)
+    # 正确动作数量
+    correct_count = user_info.get('correct_count', 0)
+    # Redis连接对象
+    r = redis.Redis(connection_pool=Pool)
+    # 动作信息
+    pose_info = r.hgetall(pose_base_name + '_' + str(pose_idx))
+    # 动作描述
+    action = pose_info.get('action', '').replace("\"", "")
+    # 持续时间
+    duration = int(pose_info.get('duration', 0))
+    # 重复次数
+    repeat_times = pose_info.get('repeat_times')
+
+    verify_info = ensure_can_continue_correct(user_info)
+
+    correct_angle_info = False
+    if verify_info is True and correct_count != pose_nums:
+        # 获取纠正角度信息
+        correct_angle_info = get_max_diff_angle_info(user_pose_data)
 
     # 响应结果
     res = {
         "code": 200,
         "data": {
-            "posename": posename,
+            "posename": pose_base_name,
             "userid": userid,
             "pose_frame": {
-                # "pose_name": user_info.get('pose_base_name') + '_' + str(user_info.get('pose_idx')),
+                "pose_name": action,
                 "coach_complete": {
                     "total": user_info.get('pose_nums', 0),
                     "current": user_info.get('pose_idx', 0)
+                },
+                "duration": {
+                    "total": duration
                 }
             }
         }
@@ -397,22 +458,25 @@ def correct(user_pose_data):
     # TODO data.pose_frame.duration -> 动作时间待处理
     # TODO data.correct -> 动作纠正
     # TODO data.pose_frame.video_playback -> 视频回放时间戳
-    # TODO data.pose_frame.pose_name -> 模型名称
 
     if correct_angle_info != False:
         # 当前动作正确 保存用户状态
-        if correct_angle_info is None:
+        if correct_angle_info is True:
             user_info['pose_idx'] = pose_idx + 1
+            user_info['correct_count'] = user_info.get('correct_count', 0) + 1
+            user_info['duration'] = duration
+            user_info['last_match_time'] = int(time.time())
             # 准备下一个动作
-            res['correct'] = {
-                'correct_pattern1': {
-                    'correct_term': 'NEXT_POSE'
+            res['data']['correct'] = {
+                'correct_pattern3': {
+                    'correct_term': 'NEXT_POSE' if duration == 0 else 'WAIT_NEXT_POSE'
                 }
             }
+            res['data']['pose_frame']['coach_complete']['current'] = user_info['pose_idx']
             # 最初动作 返回录制标志
             if pose_idx == 0:
                 res['data']['indication'] = 'record'
-        elif correct_angle_info.get('correct_word'):
+        elif correct_angle_info.get('user_angle', 0) != 0:
             # 动作不匹配 生成纠正话术
             res['data']['correct'] = {
                 'correct_pattern1': {
@@ -422,19 +486,34 @@ def correct(user_pose_data):
                 }
             }
 
+    # 初始化
+    if stage == 'START':
+        res['data']['stage'] = 'STARTED'
     # 最终动作 返回分数
-    if stage == 'END' or user_info['pose_idx'] == user_info['pose_nums'] - 1:
-        user_dict.pop(userid, None)
+    elif stage == 'END' or user_info['correct_count'] == user_info['pose_nums']:
         total = user_info.get('pose_nums', 1)
-        current = user_info.get('pose_idx', 0)
+        current = user_info.get('correct_count', 0)
+        mins_time_consuming = (user_info.get('start_timestamp', int(time.time())) - int(time.time())) / 60
+        mins_time_consuming = 1 if mins_time_consuming <= 0 else mins_time_consuming
+        kcol = 7.8 * 50 / 60 * mins_time_consuming
         # 根据进度生成分数
         score = int(current / total * 100 + random.randint(0, 9))
+        score = 100 if score > 100 else score
+        # 清空话术
+        res['data'].pop('correct', None)
+        # 刷新最终进度
+        res['data']['pose_frame']['coach_complete']['current'] = current
+        # 返回分数信息
         res['data']['score'] = {
-            'percentage': score
+            'percentage': score,
+            'kcol': kcol
         }
-    else:
-        # 保存用户数据
-        user_dict[userid] = user_info
+
+    if verify_info is not True:
+        res['data']['pose_frame']['duration']['downcount'] = verify_info
+
+    # 保存用户数据
+    user_dict[userid] = user_info
 
     logging.info('返回数据为：' + str(res))
 
