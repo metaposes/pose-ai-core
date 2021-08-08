@@ -422,12 +422,18 @@ def correct(user_pose_data):
     r = redis.Redis(connection_pool=Pool)
     # 动作信息
     pose_info = r.hgetall(pose_base_name + '_' + str(pose_idx))
+    # 下一个动作信息
+    next_pose_info = r.hgetall(pose_base_name + '_' + str(pose_idx + 1)) if pose_idx + 1 != pose_nums else {'start_time': None}
     # 动作描述
     action = pose_info.get('action', '').replace("\"", "")
     # 持续时间
     duration = int(pose_info.get('duration', 0))
     # 重复次数
     repeat_times = pose_info.get('repeat_times')
+    # 开始时间
+    video_start_time = float(pose_info.get('start_time', 0))
+    # 结束时间
+    video_end_time = float(next_pose_info.get('start_time', 0))
 
     verify_info = ensure_can_continue_correct(user_info)
 
@@ -455,9 +461,7 @@ def correct(user_pose_data):
         }
     }
 
-    # TODO data.pose_frame.duration -> 动作时间待处理
     # TODO data.correct -> 动作纠正
-    # TODO data.pose_frame.video_playback -> 视频回放时间戳
 
     if correct_angle_info != False:
         # 当前动作正确 保存用户状态
@@ -473,6 +477,10 @@ def correct(user_pose_data):
                 }
             }
             res['data']['pose_frame']['coach_complete']['current'] = user_info['pose_idx']
+            res['data']['pose_frame']['video_playback'] = {
+                'start_time': video_start_time,
+                'end_time': video_end_time
+            }
             # 最初动作 返回录制标志
             if pose_idx == 0:
                 res['data']['indication'] = 'record'
