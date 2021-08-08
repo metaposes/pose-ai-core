@@ -423,7 +423,7 @@ def correct(user_pose_data):
     # 动作信息
     pose_info = r.hgetall(pose_base_name + '_' + str(pose_idx))
     # 下一个动作信息
-    next_pose_info = r.hgetall(pose_base_name + '_' + str(pose_idx + 1)) if pose_idx + 1 != pose_nums else {'start_time': None}
+    next_pose_info = r.hgetall(pose_base_name + '_' + str(pose_idx + 1)) if pose_idx + 1 != pose_nums else {'start_time': 0}
     # 动作描述
     action = pose_info.get('action', '').replace("\"", "")
     # 持续时间
