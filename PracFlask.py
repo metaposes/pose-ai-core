@@ -470,20 +470,26 @@ def correct(user_pose_data):
             user_info['correct_count'] = user_info.get('correct_count', 0) + 1
             user_info['duration'] = duration
             user_info['last_match_time'] = int(time.time())
+            verify_info = duration
             # 准备下一个动作
             res['data']['correct'] = {
                 'correct_pattern3': {
-                    'correct_term': 'NEXT_POSE' if duration == 0 else 'WAIT_NEXT_POSE'
+                    'correct_term': 'NEXT_POSE' if duration == 0 else 'WAIT_NEXT_POSE',
+                    'param1': str(duration),
+                    'param2': str(duration)
                 }
             }
             res['data']['pose_frame']['coach_complete']['current'] = user_info['pose_idx']
             res['data']['pose_frame']['video_playback'] = {
-                'start_time': video_start_time,
-                'end_time': video_end_time
+                'start_time': video_start_time - 2,
+                'end_time': video_end_time + 2
             }
             # 最初动作 返回录制标志
-            if pose_idx == 0:
+            if user_info['pose_idx'] == 0:
                 res['data']['indication'] = 'record'
+            # 最后动作 返回结束话术
+            if user_info['correct_count'] == pose_nums and duration != 0:
+                res['data']['correct']['correct_pattern3']['correct_term'] = 'WAITING_FOR_SCORE'
         elif correct_angle_info.get('user_angle', 0) != 0:
             # 动作不匹配 生成纠正话术
             res['data']['correct'] = {
@@ -498,17 +504,20 @@ def correct(user_pose_data):
     if stage == 'START':
         res['data']['stage'] = 'STARTED'
     # 最终动作 返回分数
-    elif stage == 'END' or user_info['correct_count'] == user_info['pose_nums']:
+    elif verify_info is True and (stage == 'END' or user_info['correct_count'] == user_info['pose_nums']):
         total = user_info.get('pose_nums', 1)
         current = user_info.get('correct_count', 0)
         mins_time_consuming = (user_info.get('start_timestamp', int(time.time())) - int(time.time())) / 60
         mins_time_consuming = 1 if mins_time_consuming <= 0 else mins_time_consuming
         kcol = 7.8 * 50 / 60 * mins_time_consuming
         # 根据进度生成分数
-        score = int(current / total * 100 + random.randint(0, 9))
-        score = 100 if score > 100 else score
+        score = int(current / total * 100)
+        score = score - 20 if score == 100 else score
+        score = score + random.randint(0, 19)
         # 清空话术
         res['data'].pop('correct', None)
+        # 清空视频时间戳
+        res['data'].pop('video_playback', None)
         # 刷新最终进度
         res['data']['pose_frame']['coach_complete']['current'] = current
         # 返回分数信息
