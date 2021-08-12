@@ -485,7 +485,7 @@ def correct(user_pose_data):
                 'end_time': video_end_time + 2
             }
             # 最初动作 返回录制标志
-            if user_info['pose_idx'] == 0:
+            if user_info['pose_idx'] == 1:
                 res['data']['indication'] = 'record'
             # 最后动作 返回结束话术
             if user_info['correct_count'] == pose_nums and duration != 0:
