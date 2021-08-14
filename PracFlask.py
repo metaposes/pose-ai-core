@@ -265,7 +265,7 @@ def ensure_required_parameter(user_pose_data):
             if user_pose_data.get('keyposes') is None:
                 res['correct_term'] = 'MISSING_KEY_POSE_NUM'
         elif stage != 'END':
-            if user_pose_data.get('posedata') is None:
+            if user_pose_data.get('event') is None and user_pose_data.get('posedata') is None:
                 res['correct_term'] = 'MISSING_POSEDATA'
 
     if res.get('correct_term'):
@@ -276,6 +276,14 @@ def ensure_can_continue_correct(user_info):
     current_time = int(time.time())
     last_match_time = user_info.get('last_match_time', 0)
     duration = user_info.get('duration', 0)
+    if user_info.get('event_flag', True) is False:
+        event_flag_time = user_info.get('event_flag_time', 0)
+        if current_time - event_flag_time > 6:
+            user_info['event_flag'] = True
+            user_info.pop('event_flag_time', None)
+        else:  
+            user_info['last_match_time'] = current_time
+            return duration
     if duration != 0:
         diff = int(current_time - last_match_time)
         if diff < duration:
@@ -404,6 +412,8 @@ def correct(user_pose_data):
     pose_nums = user_pose_data.get('keyposes', 0)
     # 阶段标志：START / END
     stage = user_pose_data.get('stage')
+    # 事件
+    event = user_pose_data.get('event')
     # 用户信息
     user_info = user_dict.get(userid, init_user_info(pose_nums, pose_base_name))
 
@@ -435,6 +445,9 @@ def correct(user_pose_data):
     # 结束时间
     video_end_time = float(next_pose_info.get('start_time', 0))
 
+    if event is not None:
+        user_info['event_flag'] = True
+
     verify_info = ensure_can_continue_correct(user_info)
 
     correct_angle_info = False
@@ -453,9 +466,6 @@ def correct(user_pose_data):
                 "coach_complete": {
                     "total": user_info.get('pose_nums', 0),
                     "current": user_info.get('pose_idx', 0)
-                },
-                "duration": {
-                    "total": duration
                 }
             }
         }
@@ -470,11 +480,13 @@ def correct(user_pose_data):
             user_info['correct_count'] = user_info.get('correct_count', 0) + 1
             user_info['duration'] = duration
             user_info['last_match_time'] = int(time.time())
+            user_info['event_flag'] = False
+            user_info['event_flag_time'] = int(time.time())
             verify_info = duration
             # 准备下一个动作
             res['data']['correct'] = {
                 'correct_pattern3': {
-                    'correct_term': 'NEXT_POSE' if duration == 0 else 'WAIT_NEXT_POSE',
+                    'correct_term': 'NEXT_POSE' if duration <= 1 else 'WAIT_NEXT_POSE',
                     'param1': str(duration),
                     'param2': str(duration)
                 }
@@ -483,6 +495,9 @@ def correct(user_pose_data):
             res['data']['pose_frame']['video_playback'] = {
                 'start_time': video_start_time - 2,
                 'end_time': video_end_time + 2
+            }
+            res['data']['pose_frame']['duration'] = {
+                "total": duration
             }
             # 最初动作 返回录制标志
             if user_info['pose_idx'] == 1:
@@ -525,9 +540,6 @@ def correct(user_pose_data):
             'percentage': score,
             'kcol': kcol
         }
-
-    if verify_info is not True:
-        res['data']['pose_frame']['duration']['downcount'] = verify_info
 
     # 保存用户数据
     user_dict[userid] = user_info
