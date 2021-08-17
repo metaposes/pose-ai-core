@@ -97,7 +97,7 @@ def get_model_data_from_origin_joints(user_data_origin_joint, camera):
                 model_data_k_v_map[key]['joint_keys'][1]),
             user_data_origin_joint.get(
                 model_data_k_v_map[key]['joint_keys'][2]))
-
+ 
 
         model_data[model_data_k_v_map[swap_key]['angle_keys'][0]] = res[0]
         model_data[model_data_k_v_map[swap_key]['angle_keys'][1]] = res[1]
@@ -106,7 +106,7 @@ def get_model_data_from_origin_joints(user_data_origin_joint, camera):
     return model_data
 
 # 将标准模型数据与用户模型数据根据阈值进行对比返回差异最大的角度
-def get_max_diff_angle(standard_model_data, user_model_data, thresholds):
+def get_max_diff_angle(user_data_origin_joint, standard_model_data, user_model_data, thresholds):
     res = {
         'name': '',
         # 角度差值 「用户角度值 - 标准角度值」
@@ -124,6 +124,10 @@ def get_max_diff_angle(standard_model_data, user_model_data, thresholds):
         diff_angle = r - l
         max_diff_angle = abs(diff_angle)
         threshold = thresholds.get(key) or 90
+
+        print(model_data_k_v_map[key]['joint_keys'][0], ':', user_data_origin_joint[model_data_k_v_map[key]['joint_keys'][0]])
+        print(model_data_k_v_map[key]['joint_keys'][1], ':', user_data_origin_joint[model_data_k_v_map[key]['joint_keys'][1]])
+        print(model_data_k_v_map[key]['joint_keys'][2], ':', user_data_origin_joint[model_data_k_v_map[key]['joint_keys'][2]])
         print('获取到', key, '的标准角度值：', l)
         print('获取到', key, '的用户角度值：', r)
         print('角度相差值为：', diff_angle)
@@ -243,7 +247,7 @@ def get_max_diff_angle_info(user_pose_data):
     model_data = get_model_data_from_origin_joints(user_data_origin_joint, camera)
 
     # 差异最大角度 {'name': 'xxx', 'diff_angle': 78.281, 'correct_word': 'LEFT_ARM_POSI'}
-    max_diff_angle_info = get_max_diff_angle(key_pose_standard_joints, model_data,
+    max_diff_angle_info = get_max_diff_angle(user_data_origin_joint, key_pose_standard_joints, model_data,
                                         key_pose_joints_threshold)
 
     return max_diff_angle_info
@@ -554,7 +558,6 @@ def Dispatch():
     init_logging_config()
     if request.method == 'POST':
         user_pose_data = request.json
-        print('获取到的用户数据为:' + str(user_pose_data))
         posename = user_pose_data.get('posename')
         if posename == 'test':
             return test(user_pose_data)
