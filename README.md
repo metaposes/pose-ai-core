@@ -7,3 +7,9 @@ dump.rdb
 # env：
 python3.7.1
 flask
+
+### 本地调试
+```
+python -m pip install -r requirements.txt
+python PracFlask.py
+```
