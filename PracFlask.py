@@ -11,8 +11,8 @@ import logging
 from pathlib import Path
 
 model = mm.meta_model_calc()
-Pool = redis.ConnectionPool(
-    host='node1.host.smallsaas.cn', port=6379, max_connections=10, decode_responses=True, password='root')
+# Pool = redis.ConnectionPool(host='node1.host.smallsaas.cn', port=6379, max_connections=10, decode_responses=True, password='root')
+Pool = redis.ConnectionPool(host='sports-redis', port=6379, max_connections=10, decode_responses=True, password='root')
 app = Flask(__name__)
 cw = CorrectWord.CorrectWord
 # 用户动作进度数据
